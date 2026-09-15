@@ -1,0 +1,13 @@
+{
+  "name": "rime-omp-pet",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ASCII pet widget for the Oh My Pi prompt, driven by coding-agent state (cat/dog art derived from dropdevrahul/campy, MIT)",
+  "license": "MIT",
+  "omp": {
+    "extensions": ["./extension.ts"]
+  },
+  "scripts": {
+    "test": "bun test"
+  }
+}
