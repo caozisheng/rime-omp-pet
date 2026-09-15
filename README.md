@@ -1,10 +1,10 @@
 # rime-omp-pet
 
+<img width="163" height="104" alt="image" src="https://github.com/user-attachments/assets/5d486141-6270-4657-914a-3232208953a9" />
+
 An ASCII pet widget for the Oh My Pi (OMP) prompt, driven by coding-agent state. A cat (or dog) sits above your editor and reacts to the agent's lifecycle — thinking, running a tool, waiting for your approval, celebrating a passed test, panicking on failure. A config-file parrot pack shows off large-scale motion: whole-sprite travel across a 24-column canvas.
 
 Cat/dog art derived from [dropdevrahul/campy](https://github.com/dropdevrahul/campy) (MIT, see `licenses/CAMPY-MIT.txt`). Parrot artwork is original to this repo (an homage to [ascii.live](https://ascii.live) style, not a copy of its GPL frames).
-
-<img width="163" height="104" alt="image" src="https://github.com/user-attachments/assets/5d486141-6270-4657-914a-3232208953a9" />
 
 
 ## Summary
