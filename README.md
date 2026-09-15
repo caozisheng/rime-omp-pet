@@ -20,12 +20,12 @@ Requires [Bun](https://bun.sh) (Oh My Pi runs extensions with it).
 git clone https://github.com/caozisheng/rime-omp-pet.git
 ```
 
-Register the extension in your OMP config (e.g. `~/.omp/config.json`):
+Register the extension in `~/.omp/agent/config.yml` (user-level; a project-level
+`.omp/agent/` or `.omp/extensions/` layout also works):
 
-```json
-{
-  "extensions": ["./path/to/rime-omp-pet/extension.ts"]
-}
+```yaml
+extensions:
+  - C:/path/to/rime-omp-pet/extension.ts
 ```
 
 Optional per-project packs — drop JSON pack files into `.omp/pets/` in your project:
