@@ -13,7 +13,8 @@
         "Replaced Unicode glyphs (ω, etc.) with printable ASCII equivalents",
         "Flattened layered eight-row frames into single five-row layers",
         "Normalized frame width to 14 columns, height to 5 rows",
-        "Added wake/think/work/wait/celebrate/panic/compact/interrupted aliases mapping to Campy states"
+        "Added wake/think/work/wait/celebrate/panic/compact/interrupted aliases mapping to Campy states",
+        "Replaced alias reuse with dedicated original frame sets for think/work/wait/celebrate/panic/compact/interrupted (original artwork, not derived from Campy)"
       ]
     },
     {
@@ -27,8 +28,9 @@
       "transformations": [
         "Replaced Unicode glyphs with printable ASCII equivalents",
         "Flattened layered eight-row frames into single five-row layers",
-        "Normalized frame width to 16 columns, height to 5 rows",
-        "Added think/work/wait/celebrate/panic/compact/interrupted aliases mapping to Campy states"
+        "Added think/work/wait/celebrate/panic/compact/interrupted aliases mapping to Campy states",
+        "Replaced alias reuse with dedicated original frame sets for think/work/wait/celebrate/panic/compact/interrupted plus wake (original artwork, not derived from Campy)"
+     
       ]
     }
   ]

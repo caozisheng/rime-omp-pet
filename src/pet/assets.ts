@@ -189,15 +189,167 @@ const catSad = [
   ], 700),
 ];
 
+
+// Dedicated frames for lifecycle actions that previously reused other sets.
+// Each keeps the campy cat pose but adds a state-specific cue, so thinking,
+// running a tool, and waiting for the user read as distinct states.
+const catThink = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  o   o  \\ ",
+    "(  == ? ==  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 1_400),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  -   -  \\ ",
+    "(  == ?? == )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 700),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  o   o  \\ ",
+    "(  == ? ==  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 700),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  -   -  \\ ",
+    "(   == ...   )",
+    " \\  '?'  /  ",
+    " (__)  (__) ",
+  ], 900),
+];
+
+const catWork = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  o   o  \\ ",
+    "(  == > ==  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 450),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  -   -  \\ ",
+    "(  == >> == )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 450),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  -   -  \\ ",
+    "(  == ooo  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 900),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  o   o  \\ ",
+    "(  == ...  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 900),
+];
+const catWait = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  o   o  \\ ",
+    "(  == ...  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 1_600),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  -   -  \\ ",
+    "(  == ooo  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 900),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  -   -  \\ ",
+    "(  == zzz  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 900),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  o   o  \\ ",
+    "(  == ...  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 900),
+];
+const catCelebrate = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  ^   ^  \\ ",
+    "(  == \\_/ == )",
+    " \\  \\_/  /  ",
+    " (__)  (__) ",
+  ], 500),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  ^   ^  \\ ",
+    "(  == \\_/ == )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 500),
+];
+const catPanic = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  @   @  \\ ",
+    "(  == ! ==  )",
+    " \\  '\\'  /  ",
+    " (__)  (__) ",
+  ], 350),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  @   @  \\ ",
+    "(  == !! == )",
+    " \\  '-'  /  ",
+    " \\_)  (_/ ",
+  ], 350),
+];
+const catCompact = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  x   x  \\ ",
+    "(  == ~ ==  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 800),
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  <   <  \\ ",
+    "(  == << == )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+  ], 800),
+];
+const catInterrupted = [
+  catFrame([
+    "  /\\_____/\\  ",
+    " /  >   <  \\ ",
+    "(  == # ==  )",
+    " \\  '-'  /  ",
+    " (__)  (__) ",
+    ], 1_200),
+];
 const catAliases = {
   wake: catWake,
-  think: catExcited,
-  work: catPlaying,
-  wait: catIdle,
-  celebrate: catHappy,
-  panic: catSad,
-  compact: catExcited,
-  interrupted: catSad,
+  think: catThink,
+  work: catWork,
+  wait: catWait,
+  celebrate: catCelebrate,
+  panic: catPanic,
+  compact: catCompact,
+  interrupted: catInterrupted,
   sleep: catSleeping,
 } as const;
 
@@ -348,15 +500,136 @@ const dogSad = [
     " ;;;   ;;;   ",
   ], 1_500),
 ];
-
+const dogThink = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  ?-|-?  )  ",
+    " \\  ---  /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 1_400),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  6-|-9  )  ",
+    " \\  ---  /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 700),
+];
+const dogWork = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  >-|->  )  ",
+    " \\  w    /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 450),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  =-|-=  )  ",
+    " \\  zz   /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 450),
+];
+const dogWait = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  o-|-o  )  ",
+    " \\  ...  /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 1_600),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  --|-|--)  ",
+    " \\  ...  /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 900),
+];
+const dogCelebrate = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  ^-|-^  )  ",
+    " \\  w    /   ",
+    "  | --- |    ",
+    " /  \\o/  \\   ",
+  ], 500),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  ^-|-^  )  ",
+    " \\  w    /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 500),
+];
+const dogPanic = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  #-|-#  )  ",
+    " \\  !!   /   ",
+    "  | --- |    ",
+    " /  \\/  \\   ",
+  ], 350),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  @-|-@  )  ",
+    " \\  !!   /   ",
+    "  | --- |    ",
+    " \\_ ___ _/   ",
+  ], 350),
+];
+const dogCompact = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  <-|-<  )  ",
+    " \\  <<   /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 800),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  >-|->  )  ",
+    " \\  >>   /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 800),
+];
+const dogInterrupted = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  X-|-X  )  ",
+    " \\  ##   /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 1_200),
+];
+const dogWake = [
+  dogFrame([
+    " /\\       /\\ ",
+    "(  |-|-|  )  ",
+    " \\  ---  /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 900),
+  dogFrame([
+    " /\\       /\\ ",
+    "(  o-|-o  )  ",
+    " \\  ---  /   ",
+    "  | --- |    ",
+    " /  ___  \\   ",
+  ], 700),
+];
 const dogAliases = {
-  think: dogExcited,
-  work: dogPlaying,
-  wait: dogIdle,
-  celebrate: dogHappy,
-  panic: dogSad,
-  compact: dogExcited,
-  interrupted: dogSad,
+  wake: dogWake,
+  think: dogThink,
+  work: dogWork,
+  wait: dogWait,
+  celebrate: dogCelebrate,
+  panic: dogPanic,
+  compact: dogCompact,
+  interrupted: dogInterrupted,
   sleep: dogSleeping,
 } as const;
 

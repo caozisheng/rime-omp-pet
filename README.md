@@ -49,8 +49,7 @@ user-level `~/.omp/agent/pet.json`):
 
 ```bash
 bun install   # if/when dependencies are added; currently dependency-free
-```bash
-bun test      # 24 tests / 452 assertions
+bun test      # 25 tests / 486 assertions
 ```
 
 Layout:
@@ -59,7 +58,7 @@ Layout:
 extension.ts        # OMP extension: event wiring, pack discovery, widget mount
 src/pet/
   state.ts          # lifecycle/reaction -> animation resolution
-  animator.ts       # frame sequencing
+bun test      # 25 tests / 486 assertions
   renderer.ts       # frame -> padded text lines
   assets.ts         # built-in cat/dog packs
   validate.ts       # PetPack schema validation
