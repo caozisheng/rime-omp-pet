@@ -25,7 +25,7 @@ type RuntimeContext = {
   mode: "tui" | "rpc" | "json" | "print";
   cwd?: string;
   ui: {
-    setWidget(key: string, content: unknown, options?: { placement?: "aboveEditor" | "belowEditor" }): void;
+    setWidget(key: string, content: unknown, options?: { placement?: "aboveEditor" | "belowEditor" | "rightEditor" }): void;
     notify?(message: string, level?: "info" | "warning" | "error"): void;
   };
   setTimeout(callback: (...args: unknown[]) => void, ms?: number): Timer;
@@ -79,7 +79,7 @@ export interface RimeOmpPetOptions {
   readonly defaultPack?: string;
   /**
    * Horizontal alignment of the pet within the widget width. Defaults to
-   * `right`; user/project config files can override it (project wins).
+   * `left`; user/project config files can override it (project wins).
    */
   readonly align?: PetAlign;
 }
@@ -104,27 +104,27 @@ export function createRimeOmpPetExtension(options: RimeOmpPetOptions = {}) {
       if (ctx.mode !== "tui") return undefined;
       if (runtime !== undefined) return runtime;
       const resolved = packs ?? loadPacks([...DEFAULT_PACKS, ...(options.packs ?? [])], log);
-      runtime = new PetRuntime(ctx, resolved, initialPackId, align ?? "right");
+      runtime = new PetRuntime(ctx, resolved, initialPackId, align ?? "left");
       runtime.mount();
       return runtime;
     };
 
     pi.on("session_start", async (_event, ctx) => {
       const rctx = ctx as unknown as RuntimeContext;
-      if (options.packPaths !== undefined) {
-        ensureRuntime(rctx);
-        return;
-      }
       const cwd = rctx.cwd ?? process.cwd();
-      if (packs === undefined || cwd !== discoveredCwd) {
-        packs = await discoverPacks(defaultPackPaths(cwd), options.packs, log);
-        discoveredCwd = cwd;
-        runtime?.updatePacks(packs);
-      }
       const nextAlign = discoverAlign(defaultConfigPaths(cwd), options.align, log);
       if (nextAlign !== align) {
         align = nextAlign;
         runtime?.setAlign(align);
+      }
+      if (options.packPaths !== undefined) {
+        ensureRuntime(rctx);
+        return;
+      }
+      if (packs === undefined || cwd !== discoveredCwd) {
+        packs = await discoverPacks(defaultPackPaths(cwd), options.packs, log);
+        discoveredCwd = cwd;
+        runtime?.updatePacks(packs);
       }
       ensureRuntime(rctx);
     });
@@ -267,7 +267,7 @@ class PetRuntime {
         this.widget = new PetWidget(tui, this.animator.getFrame() ?? fallbackFrame(), this.align);
         return this.widget;
       },
-      { placement: "aboveEditor" },
+      { placement: "rightEditor" },
     );
     this.sync();
   }
@@ -481,7 +481,7 @@ export function discoverAlign(
       log.warn("rime-omp-pet: ignoring unreadable config", { path, error: String(error) });
     }
   }
-  return "right";
+  return "left";
 }
 
 async function loadExternalPacks(

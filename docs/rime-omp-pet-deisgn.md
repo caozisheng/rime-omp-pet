@@ -6,15 +6,15 @@
 
 ## 1. 背景与目标
 
-在 Oh My Pi（OMP）的 prompt/editor 上方增加一个靠右对齐的 ASCII 宠物 widget。宠物根据 coding agent 的当前状态切换表情和动作，动画帧可扩展，用户可以通过脚本或 JSON 资源定义新的动物、动作和帧。
+在 Oh My Pi（OMP）的 prompt/editor 右侧增加一个 ASCII 宠物 widget。宠物内容默认在 widget 内靠左对齐，也可通过配置改为靠右。宠物根据 coding agent 的当前状态切换表情和动作，动画帧可扩展，用户可以通过脚本或 JSON 资源定义新的动物、动作和帧。
 
 本设计只解决 OMP 内的状态指示与轻量视觉反馈，不实现独立的 Tamagotchi 模拟。宠物没有饥饿、疲劳、成长、金币或离线衰减等持久属性。
 
 ### 目标
 
 - 作为独立 OMP extension 工作，不修改 OMP core。
-- 使用 OMP 原生 widget 插槽，显示在 prompt/editor 上方。
-- 宠物内容在可用区域内靠右对齐。
+- 使用 OMP 原生 widget 插槽，显示在 prompt/editor 右侧。
+- 宠物内容在 widget 可用区域内默认靠左对齐。
 - 同时表达稳定的 agent 生命周期状态和短暂的工具/任务事件。
 - 支持 cat、dog 等可插拔 PetPack。
 - 支持脚本定义 ASCII 图，也支持不执行代码的 JSON 资源。
@@ -38,7 +38,7 @@ OMP 已有 extension UI API：
 
 ```ts
 ctx.ui.setWidget("rime-omp-pet", component, {
-  placement: "aboveEditor",
+  placement: "rightEditor",
 });
 ```
 
@@ -97,7 +97,7 @@ OMP extension events
              Pet Widget render
                     |
                     v
-        ctx.ui.setWidget(aboveEditor)
+        ctx.ui.setWidget(rightEditor)
 ```
 
 建议目录：
@@ -105,17 +105,16 @@ OMP extension events
 ```text
 rime-omp-pet/
 ├── extension.ts
-├── pet/
-│   ├── model.ts          # 状态、动作、reaction 数据结构
-│   ├── state-machine.ts  # 生命周期和 TTL 优先级解析
-│   ├── event-adapter.ts  # OMP 事件到内部事件的转换
+├── src/pet/
+│   ├── types.ts          # 状态、动作、reaction 数据结构
+│   ├── state.ts          # 生命周期和 TTL 优先级解析
 │   ├── animator.ts       # 帧时钟、切换和销毁
-│   ├── renderer.ts       # 右对齐、宽度裁剪和安全输出
-│   ├── config.ts         # 设置、资源发现和校验
-│   └── packs.ts          # PetPack 注册表
-├── assets/
-│   ├── cat.ts
-│   └── dog.ts
+│   ├── renderer.ts       # 左/右对齐、宽度裁剪和安全输出
+│   └── validate.ts       # PetPack schema 校验
+├── packs/                # 所有宠物统一为 JSON 配置文件（内置包也不例外）
+│   ├── cat.json
+│   ├── dog.json
+│   └── parrot.json
 └── provenance.json
 ```
 
@@ -127,18 +126,18 @@ rime-omp-pet/
 
 ```ts
 ctx.ui.setWidget("rime-omp-pet", component, {
-  placement: "aboveEditor",
+  placement: "rightEditor",
 });
 ```
 
 宠物 widget 不直接调用 `process.stdout.write`，不清屏，不移动终端光标，不维护 scrollback。所有更新交由 OMP TUI 处理。
 
-### 4.2 右对齐
+### 4.2 内容对齐
 
-渲染器接收 OMP 提供的 `width`，计算可用宽度后将 sprite 放在右侧：
+渲染器接收 OMP 提供的 `width`。默认不添加左侧 padding，使 sprite 在右侧 widget 内靠左；配置 `align: "right"` 时，按可用宽度计算 padding：
 
 ```ts
-const leftPadding = Math.max(0, width - spriteWidth);
+const leftPadding = align === "right" ? Math.max(0, width - spriteWidth) : 0;
 return frame.lines.map(line => " ".repeat(leftPadding) + line);
 ```
 
@@ -146,8 +145,7 @@ return frame.lines.map(line => " ".repeat(leftPadding) + line);
 
 约束：
 
-- 默认最大宽度：16–24 列，可配置。
-- 默认固定高度：5 行；资源高度不一致时拒绝或补齐，不让布局随帧跳动。
+- 支持宽度范围：14–24 列（validator 与 renderer 强制），默认固定高度 5 行；资源高度不一致时拒绝或补齐，不让布局随帧跳动。
 - 宽度不足时隐藏宠物，或降级到单行最小 fallback；不抛异常。
 - 资源内容不携带 ANSI escape sequence。
 - 第一版只接受普通 ASCII，避免 CJK、组合字符和 emoji 的终端宽度差异。
@@ -338,6 +336,8 @@ JSON 资源具有相同字段：
 }
 ```
 
+仓库自带完整示例 `packs/parrot.json`：一个 24×5 的鹦鹉 pack，全部动画通过配置文件定义，动作设计以"整只精灵在画布上平移、镜像"为主——wait 左右踱步、panic 在画布边缘弹跳、excited 沿全宽滑行。它由 `scripts/build-parrot.ts`（精灵合成器：手绘 pose + 平移/镜像变换）生成，可作为编写大型动作 pack 的参考。
+
 ### 6.3 校验与回退
 
 加载时必须校验：
@@ -392,7 +392,9 @@ class Animator {
 
 ### 8.1 资源发现位置
 
-建议支持：
+仓库自带的 `packs/` 目录在运行时枚举（相对 extension 模块解析），用户不需要改任何代码：clone 后往 `packs/` 放入新的 `<animal>.json`，重启 OMP 即可通过 `/pet <animal>` 使用。静态导入只保留 cat 作为发现完成前/失败时的同步兜底。
+
+用户与项目级资源：
 
 ```text
 ~/.omp/agent/pets/
@@ -408,7 +410,7 @@ class Animator {
 └── project-pet.ts
 ```
 
-资源发现顺序应明确且稳定：内置资源 → 用户全局资源 → 项目资源；同一 `id` 的后者覆盖前者，并在 debug/warning 日志中说明覆盖来源。第一版可以只在 session 启动时发现资源；OMP reload 后重新发现。
+资源发现顺序明确且稳定：仓库 `packs/` → 用户全局资源 → 项目资源；同一 `id` 的后者覆盖前者（用户可以覆盖仓库自带包）。资源在 session 启动时发现；OMP reload 后重新发现。
 
 ### 8.2 配置示例
 
@@ -494,7 +496,7 @@ extension 只使用公开生命周期、工具和 turn 事件，不读取 OMP �
 | 帧高度错误 | 拒绝该动作或 pack，不改变当前 widget |
 | 帧过宽 | 截断到 manifest width |
 | 终端过窄 | 隐藏或显示最小 fallback，不抛异常 |
-| resize | 重新计算右侧 padding，保留动画状态 |
+| resize | 根据对齐配置重新计算 padding，保留动画状态 |
 | reaction 过期 | 重新解析当前 lifecycle state |
 | timer 回调晚到 | 通过 disposed/generation guard 忽略 |
 | session shutdown | 取消 timer、监听和 widget，回收资源 |
@@ -502,7 +504,7 @@ extension 只使用公开生命周期、工具和 turn 事件，不读取 OMP �
 
 ## 12. 实现阶段验收标准
 
-1. OMP 启动后，宠物出现在 prompt/editor 上方并靠右。
+1. OMP 启动后，宠物出现在 prompt/editor 右侧，内容默认靠左。
 2. 宠物不覆盖 prompt，不清除终端历史，不直接写 terminal stdout。
 3. `idle`、`thinking`、`tool-running`、`waiting-user`、`success`、`error`、`compacting` 等基础状态可以切换。
 4. 成功和失败事件显示不同的短暂动作。
@@ -510,7 +512,7 @@ extension 只使用公开生命周期、工具和 turn 事件，不读取 OMP �
 6. 高优先级 reaction 覆盖低优先级 reaction。
 7. action 缺失时回退到 pack 的 fallback/idle。
 8. malformed pack 不终止 OMP session。
-9. 终端 resize 后仍保持右对齐且不越界。
+9. 终端 resize 后仍保持所选对齐方式且不越界。
 10. session shutdown 后没有遗留 timer 或事件监听。
 11. 用户可以通过 JSON 或 TypeScript 资源增加新动物。
 12. 第三方素材具有明确 provenance 和 license 记录。
@@ -523,8 +525,8 @@ extension 只使用公开生命周期、工具和 turn 事件，不读取 OMP �
 1. 定义 `PetPack`、frame 校验和内置静态 fallback。
 2. 实现纯数据的 lifecycle/reaction resolver，覆盖 priority、TTL、同优先级新旧事件和过期回退。
 3. 实现单层 Animator，使用受管 timer 并提供 `dispose()`。
-4. 实现宽度感知、右对齐和窄终端降级 renderer。
-5. 接入 OMP `aboveEditor` widget 和 session shutdown。
+4. 实现宽度感知、默认左对齐、可选右对齐和窄终端降级 renderer。
+5. 接入 OMP `rightEditor` widget 和 session shutdown。
 6. 接入 lifecycle、tool、turn 事件适配器。
 7. 添加原创 cat/dog 资源及 provenance 文件。
 8. 添加配置和资源发现；再考虑 `/pet` 命令。

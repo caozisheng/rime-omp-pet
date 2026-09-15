@@ -7,7 +7,7 @@ Cat/dog art derived from [dropdevrahul/campy](https://github.com/dropdevrahul/ca
 ## Summary
 
 - **State-driven animation** — maps OMP lifecycle events (`turn_start`, `tool_execution_start/end`, `tool_approval_*`, …) to pet states: thinking, tool-running, waiting-user, error. Short-lived reactions (file-read, test-passed, turn-failed, …) overlay the current state.
-- **Widget** — mounts above the editor in TUI mode and re-renders frames via `requestRender`.
+- **Widget** — mounts to the editor's right in TUI mode and re-renders frames via `requestRender`; artwork is left-aligned within that widget by default.
 - **Pack discovery** — the repo's own `packs/` directory is enumerated at runtime: clone, drop a new `<animal>.json` in `packs/`, restart OMP, and `/pet <animal>` works. The same JSON format also loads from `~/.omp/agent/pets/` and `<session cwd>/.omp/pets/` (user/project packs override same-id bundled ones). Malformed packs are disabled with a warning, never fatal.
 - **Options** — `packs` (in-process values), `packPaths` (explicit files/directories), `defaultPack` (initial pack id, default `cat`). `/pet <unknown>` lists available ids; `/pet status` shows the pack list.
 
@@ -36,19 +36,20 @@ Add your own animal — either drop a JSON pack into the cloned repo's `packs/`
 cp packs/parrot.json your-project/.omp/pets/parrot.json
 ```
 
-Alignment — the pet sits on the right by default. To flip it to the left, add a
-`pet.json` beside your packs (project-level `.omp/pet.json` overrides the
-user-level `~/.omp/agent/pet.json`):
+Alignment — the widget uses `rightEditor`, and the pet artwork is left-aligned
+inside it by default. To right-align the artwork, add a `pet.json` beside your
+packs (project-level `.omp/pet.json` overrides the user-level
+`~/.omp/agent/pet.json`):
 
 ```json
-{ "align": "left" }
+{ "align": "right" }
 ```
 
 ## Development
 
 ```bash
 bun install   # if/when dependencies are added; currently dependency-free
-bun test      # 28 tests / 690 assertions
+bun test      # 30 tests / 694 assertions
 ```
 
 Layout:

@@ -33,7 +33,7 @@ export interface PetRenderOptions {
   readonly maxWidth?: number;
   /**
    * Horizontal alignment of the artwork within the terminal width. Defaults to
-   * `right`, matching the original widget placement.
+   * `left`, matching the right-side widget placement.
    */
   readonly align?: PetAlign;
 }
@@ -151,8 +151,8 @@ function renderValidatedFrame(
     return [];
   }
 
-  const leftPadding = options?.align === "left"
-    ? ""
-    : " ".repeat(availableWidth - frameWidth);
+  const leftPadding = options?.align === "right"
+    ? " ".repeat(availableWidth - frameWidth)
+    : "";
   return frame.lines.map((line) => leftPadding + line);
 }

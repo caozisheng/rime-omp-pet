@@ -149,7 +149,7 @@ describe("rime-omp-pet extension", () => {
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
   });
 
-  test("mounts an aboveEditor widget and renders the default cat idle frame", async () => {
+  test("mounts a left-aligned rightEditor widget and renders the default cat idle frame", async () => {
     const host = new FakeHost();
     await host.load();
     host.emit("session_start");
@@ -158,8 +158,8 @@ describe("rime-omp-pet extension", () => {
     const widget = host.mountedWidget();
     const rendered = widget.render(40);
     expect(rendered).toHaveLength(5);
-    expect(rendered[0].endsWith("  /\\_____/\\   ")).toBe(true);
-    expect(host.widgets.at(-1)?.options?.placement).toBe("aboveEditor");
+    expect(rendered[0]).toBe("  /\\_____/\\   ");
+    expect(host.widgets.at(-1)?.options?.placement).toBe("rightEditor");
   });
 
   test("follows the tool lifecycle through widget frames", async () => {
@@ -373,10 +373,10 @@ describe("rime-omp-pet extension", () => {
     expect(frame.lines).toHaveLength(5);
   });
 
-  test("applies align from project pet.json over the user default", async () => {
+  test("applies align from project pet.json over the left-aligned default", async () => {
     const dir = makeTempDir();
     mkdirSync(join(dir, ".omp"), { recursive: true });
-    writeFileSync(join(dir, ".omp", "pet.json"), JSON.stringify({ align: "left" }));
+    writeFileSync(join(dir, ".omp", "pet.json"), JSON.stringify({ align: "right" }));
 
     const host = new FakeHost({ projectCwd: dir });
     await host.load();
@@ -385,7 +385,7 @@ describe("rime-omp-pet extension", () => {
 
     const widget = host.mountedWidget();
     const rendered = widget.render(40);
-    expect(rendered[0]).toBe(catPack.actions.idle.frames[0].lines[0]);
+    expect(rendered[0].length).toBe(40);
   });
 
   test("discoverAlign prefers the project file over the user file", () => {
@@ -403,6 +403,10 @@ describe("rime-omp-pet extension", () => {
     expect(warnings).toHaveLength(0);
   });
 
+  test("discoverAlign defaults to left when no override or config exists", () => {
+    expect(discoverAlign([], undefined, { warn: () => undefined })).toBe("left");
+  });
+
   test("code-level align overrides config files", async () => {
     const dir = makeTempDir();
     mkdirSync(join(dir, ".omp"), { recursive: true });
@@ -416,5 +420,18 @@ describe("rime-omp-pet extension", () => {
     const widget = host.mountedWidget();
     const rendered = widget.render(40);
     expect(rendered[0].length).toBe(40);
+  });
+
+  test("reads project align even when explicit pack paths are configured", async () => {
+    const dir = makeTempDir();
+    mkdirSync(join(dir, ".omp"), { recursive: true });
+    writeFileSync(join(dir, ".omp", "pet.json"), JSON.stringify({ align: "right" }));
+
+    const host = new FakeHost({ projectCwd: dir, packPaths: [] });
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    expect(host.mountedWidget().render(40)[0].length).toBe(40);
   });
 });

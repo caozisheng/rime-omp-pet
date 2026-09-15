@@ -156,21 +156,21 @@ describe("animation", () => {
 });
 
 describe("renderer", () => {
-  test("right-aligns a frame and hides it when the terminal is too narrow", () => {
+  test("left-aligns a frame by default and hides it when the terminal is too narrow", () => {
     const frame = catPack.actions.idle.frames[0];
     expect(frame).toBeDefined();
     const rendered = renderPetFrame(frame, 20);
     expect(rendered).toHaveLength(5);
-    expect(rendered[0]).toStartWith(" ".repeat(6));
+    expect(rendered[0]).toBe(frame.lines[0]);
     expect(renderPetFrame(frame, 13)).toEqual([]);
   });
 
-  test("left-aligns a frame when align is left", () => {
+  test("right-aligns a frame when align is right", () => {
     const frame = catPack.actions.idle.frames[0];
     expect(frame).toBeDefined();
-    const rendered = renderPetFrame(frame, 20, { align: "left" });
+    const rendered = renderPetFrame(frame, 20, { align: "right" });
     expect(rendered).toHaveLength(5);
-    expect(rendered[0]).toStartWith(" ".repeat(0));
+    expect(rendered[0]).toStartWith(" ".repeat(6));
     expect(rendered[0].trim()).toBe(frame.lines[0].trim());
     expect(rendered[0].length).toBeLessThanOrEqual(20);
   });
