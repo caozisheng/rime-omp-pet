@@ -6,7 +6,7 @@ import { extname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { PetAnimator, type Scheduler } from "./src/pet/animator";
 import { catPack, dogPack } from "./src/pet/assets";
-import { renderPetFrame, renderStaticFallback } from "./src/pet/renderer";
+import { renderPetFrame, renderStaticFallback, type PetAlign } from "./src/pet/renderer";
 import { PetStateResolver } from "./src/pet/state";
 import type { ActionResolution, Frame, LifecycleState, PetPack, ReactionEvent } from "./src/pet/types";
 import { validatePetPack } from "./src/pet/validate";
@@ -32,7 +32,11 @@ class PetWidget implements Component {
   private frame: Frame;
   private disposed = false;
 
-  public constructor(private readonly tui: TuiLike, frame: Frame) {
+  public constructor(
+    private readonly tui: TuiLike,
+    frame: Frame,
+    private align: PetAlign,
+  ) {
     this.frame = frame;
   }
 
@@ -42,8 +46,14 @@ class PetWidget implements Component {
     this.tui.requestRender?.();
   }
 
+  public setAlign(align: PetAlign): void {
+    if (this.disposed || this.align === align) return;
+    this.align = align;
+    this.tui.requestRender?.();
+  }
+
   public render(width: number): string[] {
-    return this.disposed ? [] : renderPetFrame(this.frame, width);
+    return this.disposed ? [] : renderPetFrame(this.frame, width, { align: this.align });
   }
 
   public invalidate(): void {
@@ -61,6 +71,11 @@ export interface RimeOmpPetOptions {
   /** JSON or trusted TypeScript/JavaScript pack files or directories. */
   readonly packPaths?: readonly string[];
   readonly defaultPack?: string;
+  /**
+   * Horizontal alignment of the pet within the widget width. Defaults to
+   * `right`; user/project config files can override it (project wins).
+   */
+  readonly align?: PetAlign;
 }
 
 /** Build the OMP extension factory. */
@@ -77,12 +92,13 @@ export function createRimeOmpPetExtension(options: RimeOmpPetOptions = {}) {
     }
     let runtime: PetRuntime | undefined;
     let discoveredCwd: string | undefined;
+    let align: PetAlign | undefined;
 
     const ensureRuntime = (ctx: RuntimeContext): PetRuntime | undefined => {
       if (ctx.mode !== "tui") return undefined;
       if (runtime !== undefined) return runtime;
       const resolved = packs ?? loadPacks([...DEFAULT_PACKS, ...(options.packs ?? [])], log);
-      runtime = new PetRuntime(ctx, resolved, initialPackId);
+      runtime = new PetRuntime(ctx, resolved, initialPackId, align ?? "right");
       runtime.mount();
       return runtime;
     };
@@ -98,6 +114,11 @@ export function createRimeOmpPetExtension(options: RimeOmpPetOptions = {}) {
         packs = await discoverPacks(defaultPackPaths(cwd), options.packs, log);
         discoveredCwd = cwd;
         runtime?.updatePacks(packs);
+      }
+      const nextAlign = discoverAlign(defaultConfigPaths(cwd), options.align, log);
+      if (nextAlign !== align) {
+        align = nextAlign;
+        runtime?.setAlign(align);
       }
       ensureRuntime(rctx);
     });
@@ -214,15 +235,18 @@ class PetRuntime {
   private lifecycle: LifecycleState = "idle";
   /** Identifies the resolution already applied to the animator. */
   private appliedKey: string | undefined;
+  private align: PetAlign;
 
   public constructor(
     private readonly ctx: RuntimeContext,
     private packs: Map<string, PetPack>,
     initialPackId: string,
+    align: PetAlign,
   ) {
     this.pack = packs.get(initialPackId) ?? packs.values().next().value ?? catPack;
     this.resolver = new PetStateResolver({ pack: this.pack });
     this.animator = this.createAnimator();
+    this.align = align;
   }
 
   public mount(): void {
@@ -231,12 +255,18 @@ class PetRuntime {
     this.ctx.ui.setWidget(
       WIDGET_KEY,
       (tui: TuiLike) => {
-        this.widget = new PetWidget(tui, this.animator.getFrame() ?? fallbackFrame());
+        this.widget = new PetWidget(tui, this.animator.getFrame() ?? fallbackFrame(), this.align);
         return this.widget;
       },
       { placement: "aboveEditor" },
     );
     this.sync();
+  }
+
+  public setAlign(align: PetAlign): void {
+    if (this.align === align) return;
+    this.align = align;
+    this.widget?.setAlign(align);
   }
 
   public setLifecycle(state: LifecycleState): void {
@@ -404,9 +434,41 @@ function packIdOf(value: unknown): string {
   }
   return "unknown";
 }
-
+/** Pack discovery directories, lowest precedence first (merged by id: later entries override). */
 function defaultPackPaths(projectCwd: string): string[] {
   return [join(homedir(), ".omp", "agent", "pets"), join(projectCwd, ".omp", "pets")];
+}
+/** Config file locations, highest precedence first: project then user. */
+function defaultConfigPaths(projectCwd: string): string[] {
+  return [join(projectCwd, ".omp", "pet.json"), join(homedir(), ".omp", "agent", "pet.json")];
+}
+
+/**
+ * Read `align` from the first config file that defines it (paths ordered
+ * highest precedence first). Values a user cannot express through config.yml
+ * registration (paths only, no arguments), so JSON sidecar files carry user
+ * preference; project overrides user.
+ */
+export function discoverAlign(
+  paths: readonly string[],
+  override: PetAlign | undefined,
+  log: { warn(message: string, context?: Record<string, unknown>): void },
+): PetAlign {
+  if (override !== undefined) return override;
+  for (const path of paths) {
+    if (!existsSync(path)) continue;
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+      const raw = (parsed as { align?: unknown } | null)?.align;
+      if (raw === "left" || raw === "right") return raw;
+      if (raw !== undefined) {
+        log.warn("rime-omp-pet: ignoring invalid align", { path, value: String(raw) });
+      }
+    } catch (error) {
+      log.warn("rime-omp-pet: ignoring unreadable config", { path, error: String(error) });
+    }
+  }
+  return "right";
 }
 
 async function loadExternalPacks(

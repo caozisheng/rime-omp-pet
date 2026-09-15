@@ -37,11 +37,20 @@ your-project/
       marten.json
 ```
 
+Alignment — the pet sits on the right by default. To flip it to the left, add a
+`pet.json` beside your packs (project-level `.omp/pet.json` overrides the
+user-level `~/.omp/agent/pet.json`):
+
+```json
+{ "align": "left" }
+```
+
 ## Development
 
 ```bash
 bun install   # if/when dependencies are added; currently dependency-free
-bun test      # 21 tests / 441 assertions
+```bash
+bun test      # 24 tests / 452 assertions
 ```
 
 Layout:

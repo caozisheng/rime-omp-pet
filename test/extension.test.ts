@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createRimeOmpPetExtension } from "../extension";
+import { createRimeOmpPetExtension, discoverAlign } from "../extension";
 import { catPack } from "../src/pet/assets";
-import { renderPetFrame } from "../src/pet/renderer";
+import { renderPetFrame, type PetAlign } from "../src/pet/renderer";
 import type { Frame, PetPack } from "../src/pet/types";
 
 type RecordedWidget = { key: string; factory: unknown; options: { placement?: string } | undefined };
@@ -15,6 +15,8 @@ type FakeHostOptions = {
   /** The cwd reported by the fake OMP runtime context. */
   projectCwd?: string;
   defaultPack?: string;
+  /** Explicit align handed to the factory (code-level override). */
+  align?: PetAlign;
 };
 
 const tempDirs: string[] = [];
@@ -89,6 +91,7 @@ class FakeHost {
   public async load() {
     const factory = createRimeOmpPetExtension({
       ...(this.options.packPaths ? { packPaths: this.options.packPaths } : {}),
+      align: this.options.align,
       defaultPack: this.options.defaultPack,
     });
     await factory(this.api as never);
@@ -332,5 +335,50 @@ describe("rime-omp-pet extension", () => {
     const widget = host.mountedWidget();
     const frame: Frame = { lines: widget.render(40) };
     expect(frame.lines).toHaveLength(5);
+  });
+
+  test("applies align from project pet.json over the user default", async () => {
+    const dir = makeTempDir();
+    mkdirSync(join(dir, ".omp"), { recursive: true });
+    writeFileSync(join(dir, ".omp", "pet.json"), JSON.stringify({ align: "left" }));
+
+    const host = new FakeHost({ projectCwd: dir });
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const widget = host.mountedWidget();
+    const rendered = widget.render(40);
+    expect(rendered[0]).toBe(catPack.actions.idle.frames[0].lines[0]);
+  });
+
+  test("discoverAlign prefers the project file over the user file", () => {
+    const user = makeTempDir();
+    const project = makeTempDir();
+    const warnings: string[] = [];
+    const log = { warn: (message: string) => warnings.push(message) };
+    writeFileSync(join(user, "user.json"), JSON.stringify({ align: "left" }));
+    writeFileSync(join(project, "project.json"), JSON.stringify({ align: "right" }));
+
+    // Paths are ordered highest precedence first.
+    expect(discoverAlign([join(project, "project.json"), join(user, "user.json")], undefined, log)).toBe("right");
+    expect(discoverAlign([join(user, "user.json")], undefined, log)).toBe("left");
+    expect(discoverAlign([join(user, "user.json")], "right", log)).toBe("right");
+    expect(warnings).toHaveLength(0);
+  });
+
+  test("code-level align overrides config files", async () => {
+    const dir = makeTempDir();
+    mkdirSync(join(dir, ".omp"), { recursive: true });
+    writeFileSync(join(dir, ".omp", "pet.json"), JSON.stringify({ align: "left" }));
+
+    const host = new FakeHost({ projectCwd: dir, align: "right" });
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const widget = host.mountedWidget();
+    const rendered = widget.render(40);
+    expect(rendered[0].length).toBe(40);
   });
 });

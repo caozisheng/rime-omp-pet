@@ -21,6 +21,9 @@ export interface AsciiFrame {
   readonly lines: readonly string[];
 }
 
+/** Supported horizontal alignments for pet artwork. */
+export type PetAlign = "left" | "right";
+
 /** Rendering options independent of OMP or terminal implementation details. */
 export interface PetRenderOptions {
   /**
@@ -28,6 +31,11 @@ export interface PetRenderOptions {
    * are clamped rather than causing an invalid render configuration.
    */
   readonly maxWidth?: number;
+  /**
+   * Horizontal alignment of the artwork within the terminal width. Defaults to
+   * `right`, matching the original widget placement.
+   */
+  readonly align?: PetAlign;
 }
 
 /**
@@ -100,7 +108,7 @@ export function isAsciiPetFrame(value: unknown): value is AsciiFrame {
  * A frame is never cropped: if either the terminal or configured artwork cap
  * cannot contain it, the pet is hidden by returning an empty row list. Invalid
  * frames instead use the original static fallback, which follows the same
- * width rules.
+ * width and alignment rules.
  */
 export function renderPetFrame(
   frame: AsciiFrame | null | undefined,
@@ -111,7 +119,7 @@ export function renderPetFrame(
     return renderStaticFallback(terminalWidth, options);
   }
 
-  return renderValidatedFrame(frame, terminalWidth, clampPetMaxWidth(options?.maxWidth));
+  return renderValidatedFrame(frame, terminalWidth, options);
 }
 
 /** Render the original static fallback with the same width and alignment rules. */
@@ -119,17 +127,13 @@ export function renderStaticFallback(
   terminalWidth: number,
   options?: PetRenderOptions,
 ): string[] {
-  return renderValidatedFrame(
-    STATIC_FALLBACK_FRAME,
-    terminalWidth,
-    clampPetMaxWidth(options?.maxWidth),
-  );
+  return renderValidatedFrame(STATIC_FALLBACK_FRAME, terminalWidth, options);
 }
 
 function renderValidatedFrame(
   frame: AsciiFrame,
   terminalWidth: number,
-  maxWidth: number,
+  options: PetRenderOptions | undefined,
 ): string[] {
   if (!Number.isFinite(terminalWidth)) {
     return [];
@@ -142,10 +146,13 @@ function renderValidatedFrame(
   }
 
   const frameWidth = firstLine.length;
+  const maxWidth = clampPetMaxWidth(options?.maxWidth);
   if (frameWidth > maxWidth || availableWidth < frameWidth) {
     return [];
   }
 
-  const leftPadding = " ".repeat(availableWidth - frameWidth);
+  const leftPadding = options?.align === "left"
+    ? ""
+    : " ".repeat(availableWidth - frameWidth);
   return frame.lines.map((line) => leftPadding + line);
 }
