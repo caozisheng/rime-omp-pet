@@ -4,6 +4,9 @@ An ASCII pet widget for the Oh My Pi (OMP) prompt, driven by coding-agent state.
 
 Cat/dog art derived from [dropdevrahul/campy](https://github.com/dropdevrahul/campy) (MIT, see `licenses/CAMPY-MIT.txt`). Parrot artwork is original to this repo (an homage to [ascii.live](https://ascii.live) style, not a copy of its GPL frames).
 
+![Uploading image.png…]()
+
+
 ## Summary
 
 - **State-driven animation** — maps OMP lifecycle events (`turn_start`, `tool_execution_start/end`, `tool_approval_*`, …) to pet states: thinking, tool-running, waiting-user, error. Short-lived reactions (file-read, test-passed, turn-failed, …) overlay the current state.
