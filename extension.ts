@@ -2,17 +2,23 @@ import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import type { Component } from "@oh-my-pi/pi-tui";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { extname, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { dirname, extname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { PetAnimator, type Scheduler } from "./src/pet/animator";
-import { catPack, dogPack } from "./src/pet/assets";
+// The bundled cat is the synchronous safety net; every other pack — dog and
+// parrot included — is discovered at runtime from the packs/ directory next
+// to this file. Cloning the repo and dropping <animal>.json into packs/
+// registers it on the next OMP start: no code change required.
+import catPack from "./packs/cat.json";
 import { renderPetFrame, renderStaticFallback, type PetAlign } from "./src/pet/renderer";
 import { PetStateResolver } from "./src/pet/state";
 import type { ActionResolution, Frame, LifecycleState, PetPack, ReactionEvent } from "./src/pet/types";
 import { validatePetPack } from "./src/pet/validate";
-
 const WIDGET_KEY = "rime-omp-pet";
-const DEFAULT_PACKS = [catPack, dogPack] as const;
+/** Synchronous fallback while runtime discovery is pending or has failed. */
+const DEFAULT_PACKS = [catPack] as const;
+/** Bundled packs directory, resolved relative to this module at runtime. */
+const BUNDLED_PACKS_DIR = join(dirname(fileURLToPath(import.meta.url)), "packs");
 type Timer = unknown;
 
 type RuntimeContext = {
@@ -210,14 +216,17 @@ export function createRimeOmpPetExtension(options: RimeOmpPetOptions = {}) {
           return;
         }
         if (command === "status") {
-          ctx.ui.notify?.(pet.status(), "info");
+          ctx.ui.notify?.(`${pet.status()} packs=[${[...pet.packs.keys()].join(", ")}]`, "info");
           return;
         }
         if (pet.hasPack(command)) {
           pet.selectPack(command);
           return;
         }
-        ctx.ui.notify?.("Usage: /pet on|off|status|<pack-id>", "warning");
+        ctx.ui.notify?.(
+          `Unknown pack "${command}". Available: ${[...pet.packs.keys()].join(", ") || "(none)"}`,
+          "warning",
+        );
       },
     });
   };
@@ -400,11 +409,15 @@ async function discoverPacks(
   log: { warn(message: string, context?: Record<string, unknown>): void; error(message: string, context?: Record<string, unknown>): void },
 ): Promise<Map<string, PetPack>> {
   try {
+    // Bundled packs ship with the repo and enumerate at runtime, so dropping a
+    // new <animal>.json into packs/ needs no code change. They sit at the
+    // lowest precedence: user and project packs may override them by id.
+    const bundled = await loadExternalPacks([BUNDLED_PACKS_DIR], log);
     const external = await loadExternalPacks(paths, log);
-    return loadPacks([...DEFAULT_PACKS, ...external, ...(extra ?? [])], log);
+    return loadPacks([...bundled, ...DEFAULT_PACKS, ...external, ...(extra ?? [])], log);
   } catch (error) {
-    // Discovery must never reject extension registration; fall back to
-    // built-in packs so event handlers and /pet still work.
+    // Discovery must never reject extension registration; fall back to the
+    // statically imported cat so event handlers and /pet still work.
     log.error("rime-omp-pet: pack discovery failed; using built-in packs", { error: String(error) });
     return loadPacks([...DEFAULT_PACKS, ...(extra ?? [])], log);
   }

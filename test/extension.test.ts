@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRimeOmpPetExtension, discoverAlign } from "../extension";
-import { catPack } from "../src/pet/assets";
+import catPack from "../packs/cat.json";
 import { renderPetFrame, type PetAlign } from "../src/pet/renderer";
 import type { Frame, PetPack } from "../src/pet/types";
 
@@ -36,6 +36,8 @@ class FakeHost {
   public readonly widgets: RecordedWidget[] = [];
   public readonly timers = new Set<unknown>();
   public readonly warnings: string[] = [];
+  public readonly notifications: string[] = [];
+  public readonly commands = new Map<string, { handler: (args: string, ctx: unknown) => unknown }>();
   private readonly projectCwd: string;
 
   public constructor(private readonly options: FakeHostOptions = {}) {
@@ -57,10 +59,12 @@ class FakeHost {
         list.push(handler);
         this.handlers.set(event, list);
       },
-      registerCommand: () => {},
-      setTimeout: (callback: () => void) => {
-        this.timers.add(callback);
-        return callback;
+      registerCommand: (name: string, def: { handler: (args: string, ctx: unknown) => unknown }) => {
+        this.commands.set(name, def);
+      },
+      setTimeout: (handler: () => void) => {
+        this.timers.add(handler);
+        return handler;
       },
       clearTimer: (timer: unknown) => {
         this.timers.delete(timer);
@@ -76,17 +80,20 @@ class FakeHost {
         setWidget: (key: string, factory: unknown, options?: { placement?: string }) => {
           this.widgets.push({ key, factory, options });
         },
-        notify: () => {},
+        notify: (message: string) => {
+          this.notifications.push(message);
+        },
       },
-      setTimeout: (callback: () => void) => {
-        this.timers.add(callback);
-        return callback;
+      setTimeout: (handler: () => void) => {
+        this.timers.add(handler);
+        return handler;
       },
       clearTimer: (timer: unknown) => {
         this.timers.delete(timer);
       },
     };
   }
+
 
   public async load() {
     const factory = createRimeOmpPetExtension({
@@ -197,6 +204,35 @@ describe("rime-omp-pet extension", () => {
 
     const expected = renderPetFrame(catPack.actions.work.frames[0], 40);
     expect(widget.render(40)).toEqual(expected);
+  });
+
+  test("enumerates repo packs/ at runtime so parrot registers with /pet parrot", async () => {
+    const host = new FakeHost();
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const pet = host.commands.get("pet");
+    expect(pet).toBeDefined();
+    await pet!.handler("parrot", host.context);
+    host.emit("turn_start");
+
+    const widget = host.mountedWidget();
+    const rendered = widget.render(60);
+    // parrot think pose: head tilted back, 24-wide canvas — proof the pack
+    // came from directory enumeration (it has no static import).
+    expect(rendered[0].trim().startsWith(".---.")).toBe(true);
+  });
+
+  test("unknown /pet id lists available packs", async () => {
+    const host = new FakeHost();
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const pet = host.commands.get("pet");
+    await pet!.handler("dragon", host.context);
+    expect(host.notifications.join(" ")).toContain("Available: cat, dog, parrot");
   });
 
   test("settles back to lifecycle after a non-loop reaction animation completes", async () => {

@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { PetAnimator, type Scheduler } from "../src/pet/animator";
-import { catPack, dogPack } from "../src/pet/assets";
+import catPack from "../packs/cat.json";
+import dogPack from "../packs/dog.json";
+import parrotPack from "../packs/parrot.json";
 import { renderPetFrame } from "../src/pet/renderer";
-import { PetStateResolver } from "../src/pet/state";
+import { DEFAULT_LIFECYCLE_ACTIONS, DEFAULT_REACTION_DEFAULTS, PetStateResolver } from "../src/pet/state";
 import { validatePetPack } from "../src/pet/validate";
 
 describe("bundled pet packs", () => {
@@ -19,13 +21,31 @@ describe("bundled pet packs", () => {
     expect(validatePetPack(catPack).ok).toBe(true);
     expect(validatePetPack(dogPack).ok).toBe(true);
   });
+  test("validate the shipped parrot config-file pack and its action coverage", () => {
+    const result = validatePetPack(parrotPack);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const pack = result.pack;
+    expect(pack.width).toBe(24);
+    for (const state of Object.values(DEFAULT_LIFECYCLE_ACTIONS)) {
+      expect(pack.actions[state], `lifecycle ${state}`).toBeDefined();
+    }
+    for (const reaction of Object.values(DEFAULT_REACTION_DEFAULTS)) {
+      expect(pack.actions[reaction.action], `reaction ${reaction.action}`).toBeDefined();
+    }
+    // Large-scale motion: the sprite's leading column differs between frames,
+    // proving whole-sprite travel rather than a glyph swap.
+    const leadingColumn = (line: string): number => line.length - line.trimStart().length;
+    const wait = pack.actions.wait.frames.map((f) => f.lines[1] ?? "");
+    expect(Math.abs(leadingColumn(wait[1] ?? "") - leadingColumn(wait[0] ?? ""))).toBeGreaterThan(2);
+    expect(wait[0]).not.toBe(wait[1]);
+  });
 
   test("map every lifecycle and reaction action onto pack animations", () => {
     for (const pack of [catPack, dogPack]) {
       const resolver = new PetStateResolver({ pack });
       for (const state of ["idle", "thinking", "tool-running", "waiting-user", "success", "error", "interrupted", "compacting"] as const) {
         resolver.setLifecycle(state);
-        expect(resolver.resolve(0).action, `${pack.id} lifecycle ${state}`).toBe(resolver.resolve(0).action);
         expect(pack.actions[resolver.resolve(0).action], `${pack.id} lifecycle ${state}`).toBeDefined();
       }
       for (const event of ["tool-start", "file-read", "file-edited", "command-running", "test-passed", "test-failed", "subagent-completed", "context-compacted", "turn-succeeded", "turn-failed", "interrupted"] as const) {
@@ -157,7 +177,7 @@ describe("renderer", () => {
 
   test("emits no terminal control sequences", () => {
     const ansiPattern = /\u001b\[[0-9;]*[A-Za-z]/;
-    for (const pack of [catPack, dogPack]) {
+    for (const pack of [catPack, dogPack, parrotPack]) {
       for (const animation of Object.values(pack.actions)) {
         for (const frame of animation.frames) {
           for (const line of frame.lines) {

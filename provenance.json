@@ -14,7 +14,8 @@
         "Flattened layered eight-row frames into single five-row layers",
         "Normalized frame width to 14 columns, height to 5 rows",
         "Added wake/think/work/wait/celebrate/panic/compact/interrupted aliases mapping to Campy states",
-        "Replaced alias reuse with dedicated original frame sets for think/work/wait/celebrate/panic/compact/interrupted (original artwork, not derived from Campy)"
+        "Replaced alias reuse with dedicated original frame sets for think/work/wait/celebrate/panic/compact/interrupted (original artwork, not derived from Campy)",
+        "Serialized the pack as packs/cat.json; the built-in registry now loads the same config-file format users extend"
       ]
     },
     {
@@ -29,8 +30,8 @@
         "Replaced Unicode glyphs with printable ASCII equivalents",
         "Flattened layered eight-row frames into single five-row layers",
         "Added think/work/wait/celebrate/panic/compact/interrupted aliases mapping to Campy states",
-        "Replaced alias reuse with dedicated original frame sets for think/work/wait/celebrate/panic/compact/interrupted plus wake (original artwork, not derived from Campy)"
-     
+        "Replaced alias reuse with dedicated original frame sets for think/work/wait/celebrate/panic/compact/interrupted plus wake (original artwork, not derived from Campy)",
+        "Serialized the pack as packs/dog.json; the built-in registry now loads the same config-file format users extend"
       ]
     }
   ]
