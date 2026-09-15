@@ -1,15 +1,15 @@
 # rime-omp-pet
 
-An ASCII pet widget for the Oh My Pi (OMP) prompt, driven by coding-agent state. A cat (or dog) sits above your editor and reacts to the agent's lifecycle — thinking, running a tool, waiting for your approval, celebrating a passed test, panicking on failure.
+An ASCII pet widget for the Oh My Pi (OMP) prompt, driven by coding-agent state. A cat (or dog) sits above your editor and reacts to the agent's lifecycle — thinking, running a tool, waiting for your approval, celebrating a passed test, panicking on failure. A config-file parrot pack shows off large-scale motion: whole-sprite travel across a 24-column canvas.
 
-Cat/dog art derived from [dropdevrahul/campy](https://github.com/dropdevrahul/campy) (MIT, see `licenses/CAMPY-MIT.txt`).
+Cat/dog art derived from [dropdevrahul/campy](https://github.com/dropdevrahul/campy) (MIT, see `licenses/CAMPY-MIT.txt`). Parrot artwork is original to this repo (an homage to [ascii.live](https://ascii.live) style, not a copy of its GPL frames).
 
 ## Summary
 
 - **State-driven animation** — maps OMP lifecycle events (`turn_start`, `tool_execution_start/end`, `tool_approval_*`, …) to pet states: thinking, tool-running, waiting-user, error. Short-lived reactions (file-read, test-passed, turn-failed, …) overlay the current state.
 - **Widget** — mounts above the editor in TUI mode and re-renders frames via `requestRender`.
-- **Pack discovery** — built-in cat/dog packs plus JSON packs from `~/.omp/agent/pets/` and `<session cwd>/.omp/pets/`. Malformed packs are disabled with a warning, never fatal.
-- **Options** — `packs` (in-process values), `packPaths` (explicit files/directories), `defaultPack` (initial pack id, default `cat`).
+- **Pack discovery** — the repo's own `packs/` directory is enumerated at runtime: clone, drop a new `<animal>.json` in `packs/`, restart OMP, and `/pet <animal>` works. The same JSON format also loads from `~/.omp/agent/pets/` and `<session cwd>/.omp/pets/` (user/project packs override same-id bundled ones). Malformed packs are disabled with a warning, never fatal.
+- **Options** — `packs` (in-process values), `packPaths` (explicit files/directories), `defaultPack` (initial pack id, default `cat`). `/pet <unknown>` lists available ids; `/pet status` shows the pack list.
 
 ## Install
 
@@ -28,13 +28,12 @@ extensions:
   - C:/path/to/rime-omp-pet/extension.ts
 ```
 
-Optional per-project packs — drop JSON pack files into `.omp/pets/` in your project:
 
-```
-your-project/
-  .omp/
-    pets/
-      marten.json
+Add your own animal — either drop a JSON pack into the cloned repo's `packs/`
+(restart OMP, then `/pet <id>`), or keep it out of the repo in a project dir:
+
+```bash
+cp packs/parrot.json your-project/.omp/pets/parrot.json
 ```
 
 Alignment — the pet sits on the right by default. To flip it to the left, add a
@@ -49,7 +48,7 @@ user-level `~/.omp/agent/pet.json`):
 
 ```bash
 bun install   # if/when dependencies are added; currently dependency-free
-bun test      # 25 tests / 486 assertions
+bun test      # 28 tests / 690 assertions
 ```
 
 Layout:
@@ -58,11 +57,15 @@ Layout:
 extension.ts        # OMP extension: event wiring, pack discovery, widget mount
 src/pet/
   state.ts          # lifecycle/reaction -> animation resolution
-bun test      # 25 tests / 486 assertions
   renderer.ts       # frame -> padded text lines
-  assets.ts         # built-in cat/dog packs
   validate.ts       # PetPack schema validation
   types.ts
+packs/              # all pets live here as PetPack JSON — built-ins included
+  cat.json          # built-in cat (art derived from campy, MIT)
+  dog.json          # built-in dog (art derived from campy, MIT)
+  parrot.json       # large-scale motion showcase (original art)
+scripts/
+  build-parrot.ts   # sprite composer that generates packs/parrot.json
 test/               # unit + FakeHost extension tests (bun:test)
 ```
 
