@@ -1,9 +1,9 @@
 /**
  * Pure ASCII frame rendering for the OMP pet widget.
  *
- * Frames are deliberately restricted to a small, fixed-size ASCII canvas. This
- * keeps string length equivalent to terminal display width and prevents artwork
- * from supplying terminal control sequences.
+ * Frames are restricted to a fixed-size printable-ASCII canvas. This keeps
+ * string length equivalent to terminal display width and prevents artwork from
+ * supplying terminal control sequences.
  */
 
 /** The number of rows every bundled pet frame occupies. */
@@ -11,7 +11,7 @@ export const PET_FRAME_HEIGHT = 5;
 
 /** The supported inclusive width range for pet artwork. */
 export const MIN_PET_FRAME_WIDTH = 14;
-export const MAX_PET_FRAME_WIDTH = 24;
+export const MAX_PET_FRAME_WIDTH = 70;
 
 /** The default configured cap for pet artwork. */
 export const DEFAULT_PET_MAX_WIDTH = MAX_PET_FRAME_WIDTH;

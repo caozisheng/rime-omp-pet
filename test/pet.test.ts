@@ -8,18 +8,85 @@ import { DEFAULT_LIFECYCLE_ACTIONS, DEFAULT_REACTION_DEFAULTS, PetStateResolver 
 import { validatePetPack } from "../src/pet/validate";
 
 describe("bundled pet packs", () => {
-  test("use the Campy cat and dog animation vocabulary with attribution", () => {
+  test("retain Campy attribution for the derived cat and dog artwork", () => {
     expect(catPack.metadata?.license).toBe("MIT");
     expect(catPack.metadata?.source).toContain("dropdevrahul/campy");
-    expect(catPack.actions.idle.frames[0]?.lines[0]).toBe("  /\\_____/\\   ");
     expect(dogPack.metadata?.license).toBe("MIT");
     expect(dogPack.metadata?.source).toContain("dropdevrahul/campy");
-    expect(dogPack.actions.idle.frames[0]?.lines[0]).toBe(" /\\       /\\    ");
   });
 
   test("validate every bundled pack", () => {
     expect(validatePetPack(catPack).ok).toBe(true);
     expect(validatePetPack(dogPack).ok).toBe(true);
+  });
+  test("restores the original cat idle artwork on the 70-column stage", () => {
+    const animation = catPack.actions.idle;
+    const artwork = animation.frames.map(frame => frame.lines.map(line => line.trimEnd()));
+
+    expect(animation.loop).toBe(true);
+    expect(animation.frames.map(frame => frame.durationMs)).toEqual([900, 700]);
+    expect(animation.frames.every(frame => frame.lines.every(line => line.length === 70))).toBe(true);
+    expect(artwork).toEqual([
+      ["  /\\_____/\\", " /  o   o  " + "\\", "(  == ^ ==  )", " \\  '-'  /", " (__)  (__)"] ,
+      ["  /\\_____/\\", " /  -   -  " + "\\", "(  == ^ ==  )", " \\  '-'  /", " (__)  (__)"] ,
+    ]);
+  });
+  test("supports the cat's 70-column motion with every action starting at the left edge", () => {
+    const result = validatePetPack(catPack);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const pack = result.pack;
+    expect(pack.width).toBe(70);
+    const leadingColumn = (line: string): number => line.length - line.trimStart().length;
+    const framePosition = (frame: { lines: readonly string[] }): number =>
+      Math.min(...frame.lines.filter(line => line.trim().length > 0).map(leadingColumn));
+    for (const [action, animation] of Object.entries(pack.actions)) {
+      expect(framePosition(animation.frames[0]), `${action} first frame`).toBe(0);
+    }
+    const positions = pack.actions.happy.frames.map(framePosition);
+    expect(Math.max(...positions) - Math.min(...positions)).toBeGreaterThanOrEqual(45);
+
+    const rendered = renderPetFrame(pack.actions.idle.frames[0], 70);
+    expect(rendered).toHaveLength(5);
+    expect(rendered.every(line => line.length === 70)).toBe(true);
+  });
+
+  test("gives the cat a slow full-stage thinking narrative", () => {
+    const animation = catPack.actions.think;
+    const leadingColumn = (line: string): number => line.length - line.trimStart().length;
+    const framePosition = (frame: { lines: readonly string[] }): number =>
+      Math.min(...frame.lines.filter(line => line.trim().length > 0).map(leadingColumn));
+    const positions = animation.frames.map(framePosition);
+    const durationMs = animation.frames.reduce((total, frame) => total + frame.durationMs, 0);
+    const confusionFrameIndex = animation.frames.findIndex(frame => frame.lines.some(line => line.includes("?")));
+    const insightFrameIndex = animation.frames.findIndex(frame => frame.lines.some(line => line.includes("!")));
+    const insightMarkerCount = animation.frames.reduce(
+      (count, frame) => count + frame.lines.reduce((lineCount, line) => lineCount + (line.match(/!/g)?.length ?? 0), 0),
+      0,
+    );
+
+    expect(animation.loop).toBe(true);
+    expect(animation.frames.length).toBeGreaterThanOrEqual(16);
+    expect(durationMs).toBeGreaterThanOrEqual(8_000);
+    expect(durationMs).toBeLessThanOrEqual(10_000);
+    expect(animation.frames.every(frame => frame.lines.length === 5)).toBe(true);
+    expect(animation.frames.every(frame => frame.lines.every(line => line.length === 70))).toBe(true);
+    expect(positions[0]).toBe(0);
+    expect(Math.max(...positions)).toBeGreaterThanOrEqual(55);
+    expect(positions.at(-1)).toBeLessThanOrEqual(10);
+    expect(positions.slice(1).every((position, index) => Math.abs(position - positions[index]) <= 20)).toBe(true);
+    expect(confusionFrameIndex).toBeGreaterThanOrEqual(0);
+    expect(insightFrameIndex).toBeGreaterThan(confusionFrameIndex);
+    expect(insightMarkerCount).toBe(1);
+  });
+
+  test("rejects pet packs wider than 70 columns", () => {
+    expect(validatePetPack({ ...dogPack, width: 70 }).ok).toBe(true);
+    const result = validatePetPack({ ...dogPack, width: 71 });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("invalid-dimensions");
   });
   test("validate the shipped parrot config-file pack and its action coverage", () => {
     const result = validatePetPack(parrotPack);
@@ -125,6 +192,8 @@ describe("animation", () => {
     scheduled.shift()?.();
     expect(callbacks).toContain("wake:2");
     scheduled.shift()?.();
+    expect(callbacks).toContain("wake:3");
+    scheduled.shift()?.();
     expect(callbacks.at(-1)).toBe("complete:wake");
   });
 
@@ -157,20 +226,20 @@ describe("animation", () => {
 
 describe("renderer", () => {
   test("left-aligns a frame by default and hides it when the terminal is too narrow", () => {
-    const frame = catPack.actions.idle.frames[0];
+    const frame = dogPack.actions.idle.frames[0];
     expect(frame).toBeDefined();
     const rendered = renderPetFrame(frame, 20);
     expect(rendered).toHaveLength(5);
     expect(rendered[0]).toBe(frame.lines[0]);
-    expect(renderPetFrame(frame, 13)).toEqual([]);
+    expect(renderPetFrame(frame, 15)).toEqual([]);
   });
 
   test("right-aligns a frame when align is right", () => {
-    const frame = catPack.actions.idle.frames[0];
+    const frame = dogPack.actions.idle.frames[0];
     expect(frame).toBeDefined();
     const rendered = renderPetFrame(frame, 20, { align: "right" });
     expect(rendered).toHaveLength(5);
-    expect(rendered[0]).toStartWith(" ".repeat(6));
+    expect(rendered[0]).toStartWith(" ".repeat(4));
     expect(rendered[0].trim()).toBe(frame.lines[0].trim());
     expect(rendered[0].length).toBeLessThanOrEqual(20);
   });

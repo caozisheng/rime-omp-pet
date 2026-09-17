@@ -145,7 +145,7 @@ return frame.lines.map(line => " ".repeat(leftPadding) + line);
 
 约束：
 
-- 支持宽度范围：14–24 列（validator 与 renderer 强制），默认固定高度 5 行；资源高度不一致时拒绝或补齐，不让布局随帧跳动。
+- 支持宽度范围：14–70 列（validator 与 renderer 强制），默认固定高度 5 行；猫资源每个动作的首帧从第 1 列开始，后续横向位移限制在 70 列舞台内；资源高度不一致时拒绝或补齐，不让布局随帧跳动。
 - 宽度不足时隐藏宠物，或降级到单行最小 fallback；不抛异常。
 - 资源内容不携带 ANSI escape sequence。
 - 第一版只接受普通 ASCII，避免 CJK、组合字符和 emoji 的终端宽度差异。
@@ -230,7 +230,7 @@ TTL、priority 和 action 应进入配置，不能散落在事件处理器中。
 |---|---|---|
 | session 启动 | `wake` | 唤醒 |
 | idle | `idle` | 呼吸、眨眼 |
-| agent 思考 | `think` | 思考 |
+| agent 思考 | `think` | 约 9.65 秒的低干扰叙事循环：缓慢横跨舞台、停步困惑、歪头思索、短暂灵光、转身返回 |
 | 工具运行 | `work` | 工作、打字 |
 | 等待用户 | `wait` | 等待输入 |
 | 工具或 turn 成功 | `happy` | 开心 |
@@ -418,7 +418,7 @@ class Animator {
 pet:
   enabled: true
   pack: cat
-  maxWidth: 18
+  maxWidth: 70
   maxHeight: 5
   alignment: right
   idleFrameMs: 1200

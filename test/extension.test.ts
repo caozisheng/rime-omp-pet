@@ -156,9 +156,9 @@ describe("rime-omp-pet extension", () => {
     await host.settle();
 
     const widget = host.mountedWidget();
-    const rendered = widget.render(40);
-    expect(rendered).toHaveLength(5);
-    expect(rendered[0]).toBe("  /\\_____/\\   ");
+    const rendered = widget.render(70);
+    expect(rendered).toEqual(catPack.actions.idle.frames[0]?.lines ?? []);
+    expect(widget.render(69)).toEqual([]);
     expect(host.widgets.at(-1)?.options?.placement).toBe("rightEditor");
   });
 
@@ -171,11 +171,11 @@ describe("rime-omp-pet extension", () => {
     const widget = host.mountedWidget();
     host.emit("turn_start");
     host.emit("tool_execution_start", { toolCallId: "1", toolName: "read" });
-    let rendered = widget.render(40);
-    expect(rendered[1].trim()).not.toBe("");
+    let rendered = widget.render(70);
+    expect(rendered[1]?.trim()).not.toBe("");
 
     host.emit("tool_execution_end", { toolCallId: "1", toolName: "bash", isError: true });
-    rendered = widget.render(40);
+    rendered = widget.render(70);
     expect(rendered).toHaveLength(5);
   });
 
@@ -189,8 +189,8 @@ describe("rime-omp-pet extension", () => {
     host.emit("tool_approval_requested");
     host.emit("tool_approval_resolved", { toolCallId: "1", toolName: "bash", approved: false });
 
-    const expected = renderPetFrame(catPack.actions.think.frames[0], 40);
-    expect(widget.render(40)).toEqual(expected);
+    const expected = renderPetFrame(catPack.actions.think.frames[0], 70);
+    expect(widget.render(70)).toEqual(expected);
   });
 
   test("an approved approval moves the pet into tool-running", async () => {
@@ -202,8 +202,8 @@ describe("rime-omp-pet extension", () => {
     const widget = host.mountedWidget();
     host.emit("tool_approval_resolved", { toolCallId: "1", toolName: "bash", approved: true });
 
-    const expected = renderPetFrame(catPack.actions.work.frames[0], 40);
-    expect(widget.render(40)).toEqual(expected);
+    const expected = renderPetFrame(catPack.actions.work.frames[0], 70);
+    expect(widget.render(70)).toEqual(expected);
   });
 
   test("enumerates repo packs/ at runtime so parrot registers with /pet parrot", async () => {
@@ -278,7 +278,7 @@ describe("rime-omp-pet extension", () => {
     expect(widget.render(40)[1].endsWith("(idle)      ")).toBe(true);
   });
 
-  test("celebrates success then settles back to lifecycle idle", async () => {
+  test("celebrates success with the looping happy run", async () => {
     const host = new FakeHost();
     await host.load();
     host.emit("session_start");
@@ -286,13 +286,10 @@ describe("rime-omp-pet extension", () => {
 
     const widget = host.mountedWidget();
     host.emit("agent_end", {});
-    let rendered = widget.render(40);
-    expect(rendered).toHaveLength(5);
+    expect(widget.render(70)).toEqual(catPack.actions.happy.frames[0]?.lines ?? []);
 
-    await host.runTimers(20);
-    rendered = widget.render(40);
-    expect(rendered).toHaveLength(5);
-    expect(rendered[0].endsWith("  /\\_____/\\   ")).toBe(true);
+    await host.runTimers(1);
+    expect(widget.render(70)).toEqual(catPack.actions.happy.frames[1]?.lines ?? []);
   });
 
   test("disposes the widget on session_shutdown without leaking timers", async () => {
@@ -369,7 +366,7 @@ describe("rime-omp-pet extension", () => {
 
     expect(host.warnings.length).toBeGreaterThan(0);
     const widget = host.mountedWidget();
-    const frame: Frame = { lines: widget.render(40) };
+    const frame: Frame = { lines: widget.render(70) };
     expect(frame.lines).toHaveLength(5);
   });
 
@@ -384,8 +381,8 @@ describe("rime-omp-pet extension", () => {
     await host.settle();
 
     const widget = host.mountedWidget();
-    const rendered = widget.render(40);
-    expect(rendered[0].length).toBe(40);
+    const rendered = widget.render(160);
+    expect(rendered[0]?.length).toBe(160);
   });
 
   test("discoverAlign prefers the project file over the user file", () => {
@@ -418,8 +415,8 @@ describe("rime-omp-pet extension", () => {
     await host.settle();
 
     const widget = host.mountedWidget();
-    const rendered = widget.render(40);
-    expect(rendered[0].length).toBe(40);
+    const rendered = widget.render(160);
+    expect(rendered[0]?.length).toBe(160);
   });
 
   test("reads project align even when explicit pack paths are configured", async () => {
@@ -432,6 +429,6 @@ describe("rime-omp-pet extension", () => {
     host.emit("session_start");
     await host.settle();
 
-    expect(host.mountedWidget().render(40)[0].length).toBe(40);
+    expect(host.mountedWidget().render(160)[0]?.length).toBe(160);
   });
 });
