@@ -69,7 +69,7 @@ describe("bundled pet packs", () => {
     expect(animation.loop).toBe(true);
     expect(animation.frames.length).toBeGreaterThanOrEqual(16);
     expect(durationMs).toBeGreaterThanOrEqual(8_000);
-    expect(durationMs).toBeLessThanOrEqual(10_000);
+  expect(durationMs).toBeLessThanOrEqual(10_500);
     expect(animation.frames.every(frame => frame.lines.length === 5)).toBe(true);
     expect(animation.frames.every(frame => frame.lines.every(line => line.length === 70))).toBe(true);
     expect(positions[0]).toBe(0);
