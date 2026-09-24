@@ -31,7 +31,7 @@
         }
       ]
     },
-    "happy": {
+    "celebrate": {
       "loop": true,
       "frames": [
         {
@@ -721,7 +721,7 @@
         }
       ]
     },
-    "celebrate": {
+    "happy": {
       "loop": true,
       "frames": [
         {
