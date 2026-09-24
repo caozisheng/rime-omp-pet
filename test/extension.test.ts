@@ -179,6 +179,55 @@ describe("rime-omp-pet extension", () => {
     expect(rendered).toHaveLength(5);
   });
 
+  test("a productive edit loop no longer emits file-edited reactions", async () => {
+    const host = new FakeHost();
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const widget = host.mountedWidget();
+    // Before the fix every edit end emitted file-edited (p70, TTL 1200ms),
+    // which starved the thinking lifecycle for the whole turn: the model kept
+    // thinking but the pet never left happy. Now an edit end emits nothing, so
+    // the only live reaction right after the loop is the last tool-start
+    // (p60): the widget shows work, never happy.
+    for (let i = 0; i < 3; i++) {
+      host.emit("tool_execution_start", { toolCallId: `e${i}`, toolName: "edit" });
+      host.emit("tool_execution_end", { toolCallId: `e${i}`, toolName: "edit", isError: false });
+    }
+
+    expect(widget.render(70)).toEqual(catPack.actions.work.frames[0]?.lines ?? []);
+  });
+
+
+
+  test("a user interrupt switches the pet to the interrupted action", async () => {
+    const host = new FakeHost();
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const widget = host.mountedWidget();
+    host.emit("turn_start");
+    host.emit("message_end", { message: { role: "assistant", errorMessage: "Interrupted by user" } });
+
+    const expected = renderPetFrame(catPack.actions.interrupted.frames[0], 70);
+    expect(widget.render(70)).toEqual(expected);
+  });
+
+  test("a failed turn settles into sad instead of celebrating", async () => {
+    const host = new FakeHost();
+    await host.load();
+    host.emit("session_start");
+    await host.settle();
+
+    const widget = host.mountedWidget();
+    host.emit("agent_end", { messages: [{ role: "assistant", errorMessage: "rate limited" }] });
+
+    const expected = renderPetFrame(catPack.actions.sad.frames[0], 70);
+    expect(widget.render(70)).toEqual(expected);
+  });
+
   test("a denied approval keeps the pet thinking instead of tool-running", async () => {
     const host = new FakeHost();
     await host.load();

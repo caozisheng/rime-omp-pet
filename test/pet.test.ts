@@ -8,8 +8,9 @@ import { DEFAULT_LIFECYCLE_ACTIONS, DEFAULT_REACTION_DEFAULTS, PetStateResolver 
 import { validatePetPack } from "../src/pet/validate";
 
 describe("bundled pet packs", () => {
-  test("retain Campy attribution for the derived cat and dog artwork", () => {
+  test("retain attribution for the derived cat and dog artwork", () => {
     expect(catPack.metadata?.license).toBe("MIT");
+    expect(catPack.metadata?.source).toContain("PixelSergey/meow");
     expect(catPack.metadata?.source).toContain("dropdevrahul/campy");
     expect(dogPack.metadata?.license).toBe("MIT");
     expect(dogPack.metadata?.source).toContain("dropdevrahul/campy");
@@ -19,7 +20,7 @@ describe("bundled pet packs", () => {
     expect(validatePetPack(catPack).ok).toBe(true);
     expect(validatePetPack(dogPack).ok).toBe(true);
   });
-  test("restores the original cat idle artwork on the 70-column stage", () => {
+  test("restores the meow-derived cat idle artwork on the 70-column stage", () => {
     const animation = catPack.actions.idle;
     const artwork = animation.frames.map(frame => frame.lines.map(line => line.trimEnd()));
 
@@ -27,10 +28,11 @@ describe("bundled pet packs", () => {
     expect(animation.frames.map(frame => frame.durationMs)).toEqual([900, 700]);
     expect(animation.frames.every(frame => frame.lines.every(line => line.length === 70))).toBe(true);
     expect(artwork).toEqual([
-      ["  /\\_____/\\", " /  o   o  " + "\\", "(  == ^ ==  )", " \\  '-'  /", " (__)  (__)"] ,
-      ["  /\\_____/\\", " /  -   -  " + "\\", "(  == ^ ==  )", " \\  '-'  /", " (__)  (__)"] ,
+      ["/\\___/\\", ") - - (", "=\\ -^- /=", "/     \\", "\\__ __ __))"],
+      ["/\\___/\\", ") _ _ (", "=\\ -^- /=", "/     \\", "\\__ __ __))"],
     ]);
   });
+
   test("supports the cat's 70-column motion with every action starting at the left edge", () => {
     const result = validatePetPack(catPack);
     expect(result.ok).toBe(true);
@@ -147,6 +149,23 @@ describe("state resolution", () => {
     resolver.emit("file-edited", 2000);
 
     expect(resolver.resolve(2001).action).toBe("panic");
+  });
+
+  test("a tool loop with no notable outcomes returns to think between tools", () => {
+    // Regression: extension.ts used to emit file-edited (p70) after every
+    // edit tool end; a productive loop starved the thinking lifecycle for the
+    // whole turn. The seam contract: once the trailing tool-start reaction
+    // (p60, TTL 800ms) expires, think owns the stage again.
+    const resolver = new PetStateResolver({ pack: catPack });
+    for (let i = 0; i < 5; i++) {
+      resolver.setLifecycle("tool-running");
+      resolver.emit("tool-start", i * 2000);
+      resolver.setLifecycle("thinking");
+      resolver.resolve(i * 2000 + 100);
+    }
+
+    expect(resolver.resolve(4 * 2000 + 100).action).toBe("work");
+    expect(resolver.resolve(4 * 2000 + 801).action).toBe("think");
   });
 
   test("falls back to idle when a requested action is missing from the pack", () => {

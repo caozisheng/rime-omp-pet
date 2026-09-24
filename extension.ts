@@ -157,7 +157,28 @@ export function createRimeOmpPetExtension(options: RimeOmpPetOptions = {}) {
       const pet = ensureRuntime(ctx as unknown as RuntimeContext);
       if (pet === undefined) return;
       pet.setLifecycle(event.isError ? "error" : "thinking");
-      pet.react(toolEndReaction(event.toolName, event.isError));
+      // A busy tool loop re-emits a reaction after every tool end; before this
+      // fix that starved `think` for the whole turn (every edit → happy, every
+      // test → celebrate, forever). Ordinary successes now return to thinking
+      // immediately; only notable outcomes earn a reaction.
+      if (event.isError) {
+        pet.react(VERIFICATION_TOOL.test(event.toolName) ? "test-failed" : "turn-failed");
+        return;
+      }
+      if (VERIFICATION_TOOL.test(event.toolName)) pet.react("test-passed");
+      else if (SUBAGENT_TOOL.test(event.toolName)) pet.react("subagent-completed");
+    });
+    pi.on("message_end", (event, ctx) => {
+      const pet = ensureRuntime(ctx as unknown as RuntimeContext);
+      if (pet === undefined) return;
+      // OMP marks a user interrupt (ESC) on the aborted assistant message's
+      // errorMessage with USER_INTERRUPT_LABEL ("Interrupted by user"); this is
+      // the only extension-visible interrupt signal.
+      const interrupted = (event.message as { errorMessage?: string } | undefined)?.errorMessage === USER_INTERRUPT_LABEL;
+      if (interrupted) {
+        pet.setLifecycle("interrupted");
+        pet.react("interrupted");
+      }
     });
     pi.on("session.compacting", (_event, ctx) => ensureRuntime(ctx as unknown as RuntimeContext)?.setLifecycle("compacting"));
     pi.on("auto_compaction_start", (_event, ctx) => ensureRuntime(ctx as unknown as RuntimeContext)?.setLifecycle("compacting"));
@@ -182,8 +203,9 @@ export function createRimeOmpPetExtension(options: RimeOmpPetOptions = {}) {
         pet.setLifecycle("thinking");
         return;
       }
-      pet.setLifecycle("idle");
-      pet.react("turn-succeeded");
+      const failed = lastAssistantFailed(event.messages);
+      pet.setLifecycle(failed ? "error" : "idle");
+      pet.react(failed ? "turn-failed" : "turn-succeeded");
     });
     pi.on("auto_retry_start", (_event, ctx) => {
       const pet = ensureRuntime(ctx as unknown as RuntimeContext);
@@ -526,22 +548,23 @@ function fallbackFrame(): Frame {
   return { lines: renderStaticFallback(14).map(line => line.slice(-14)) };
 }
 
+/** OMP stamps user interrupts (ESC) on the aborted assistant message. */
+const USER_INTERRUPT_LABEL = "Interrupted by user";
+
+/** True when the final assistant message carries an error marker. */
+function lastAssistantFailed(messages: readonly unknown[] | undefined): boolean {
+  const last = messages?.at(-1) as { errorMessage?: string; role?: string } | undefined;
+  return last?.role === "assistant" && typeof last.errorMessage === "string" && last.errorMessage.length > 0;
+}
+
+/** Matches OMP's subagent-dispatch tool names (task, subagents, agent). */
+const SUBAGENT_TOOL = /^task$|^agent$|^subagent/i;
+
 function toolStartReaction(toolName: string): ReactionEvent {
   const normalized = toolName.toLowerCase();
   if (normalized.includes("read") || normalized.includes("grep") || normalized.includes("search")) return "file-read";
   return normalized.includes("bash") || normalized.includes("command") ? "command-running" : "tool-start";
 }
 
-function toolEndReaction(toolName: string, isError: boolean): ReactionEvent {
-  if (isError) return normalizedTest(toolName) ? "test-failed" : "turn-failed";
-  if (normalizedTest(toolName)) return "test-passed";
-  return normalizedWrite(toolName) ? "file-edited" : "tool-start";
-}
-
-function normalizedTest(toolName: string): boolean {
-  return /test|check|lint|typecheck/i.test(toolName);
-}
-
-function normalizedWrite(toolName: string): boolean {
-  return /write|edit|patch|apply/i.test(toolName);
-}
+/** Distinguishes a verification tool (test/lint/check) from a plain tool. */
+const VERIFICATION_TOOL = /test|check|lint|typecheck/i;
