@@ -19,6 +19,21 @@
       ]
     },
     {
+      "assetId": "cat-pack-meow-actions",
+      "repository": "https://github.com/PixelSergey/meow",
+      "ref": "44b1c46167c353daad892c4042ab51de4b247959",
+      "path": "cats/cat133.txt, cats/cat135.txt",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 Sergey Ichtchenko",
+      "licenseFile": "licenses/MEOW-MIT.txt",
+      "transformations": [
+        "Selected the 7-12 line cat family matching the existing think poses: cat133 side-view walking cat and cat135 arched cat",
+        "Cropped to the fixed five-row stage, keeping printable ASCII only",
+        "Rebuilt idle/work/wait/happy/celebrate/panic/compact/interrupted as multi-frame actions reusing the think sprite family (eye swaps, leg cycles, whole-sprite travel) on the 70x5 stage",
+        "Generator kept at scripts/build-cat-frames.ts with inline invariant checks"
+      ]
+    },
+    {
       "assetId": "dog-pack",
       "repository": "https://github.com/dropdevrahul/campy",
       "ref": "814566b7df24512c64884550bd22589d5fedd2d4",
