@@ -1,11 +1,48 @@
+#!/usr/bin/env bun
 /**
- * One-shot generator for packs/cat.json action frames derived from the
- * PixelSergey/meow cat family (MIT, (c) 2024 Sergey Ichtchenko).
- * Run: bun scripts/build-cat-frames.ts > /tmp/cat-frames.json
- * Verifies invariants inline: 70x5 stage, first frame at column 0, no ANSI.
+ * Generates the sprite-driven cat actions in packs/cat.json.
+ *
+ * Art is derived from PixelSergey/meow cats/cat133.txt + cats/cat135.txt and
+ * dropdevrahul/campy core/pets/cat.ts (both MIT; see licenses/ and
+ * provenance.json), normalized onto a fixed 70x5 printable-ASCII stage.
+ *
+ * Each pose is written once, with all five rows in their true relative
+ * columns, and frames move that pose by stamping it at a column offset.
+ * Never re-indent individual frame rows by hand: a stray space — or a
+ * miscounted `\\` escape — is exactly how the artwork drifted a column to the
+ * left of its own spine.
+ *
+ * Run:
+ *   bun scripts/build-cat-frames.ts --write   # merge into packs/cat.json
+ *   bun scripts/build-cat-frames.ts           # print the generated actions
  */
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { PetPack } from "../src/pet/types";
+
 const W = 70;
 const H = 5;
+
+/**
+ * Front-facing sitting cat. The spine (crown, face, belly) sits on column 1;
+ * the outstretched paws overhang it on column 0 and column 8, and the hind
+ * leg plus tail run from column 0 to column 10.
+ *
+ *   0123456789
+ *    /\___/\
+ *    ) - - (
+ *   =\ -^- /=
+ *    /     \
+ *   \__ __ __))
+ */
+const FRONT = [
+  " /\\___/\\",
+  " ) - - (",
+  "=\\ -^- /=",
+  " /     \\",
+  "\\__ __ __))",
+];
 
 /** Side-view walking cat — meow cat133 rows 2-6, walking right (legs A). */
 const SIDE_A = [
@@ -15,45 +52,74 @@ const SIDE_A = [
   " > /` --< <<",
   " \\__))   \\_))",
 ];
-/** Legs variant — think frame 2 (cat133 legs B). */
+/** Same cat, legs B (mid-stride). */
 const SIDE_B = [
   "))          |\\_/|",
-  "|      `'..' - -(",
+  "|      `'..' a a(",
   " \\  \\      \\ =_Y/=",
   "  >\\_  /--<",
   "   (_)) \\_))",
 ];
-/** Front sitting cat — think frames 7-13 body. */
-const FRONT = [
-  "/\\___/\\",
-  ") - - (",
-  "=\\ -^- /=",
-  "/     \\",
-  "\\__ __ __))",
+/** Arched-back cat — meow cat135 rows 2-6, facing right. */
+const ARCH = [
+  " /\\=/\\-\"\"-.//",
+  "= 'Y' =  ,  \\",
+  " '-^-'  /(  /",
+  "  /;_,) |\\\\ \\",
+  " (_/ (_/ (_(_/",
+];
+/** Curled sleeper, head on the right; ears aligned over the 7-wide face. */
+const SLEEP_CURL = [
+  "     /\\_/\\",
+  " __ ( -.- )>",
+  "/  \\/   |",
+  "\\__/ /\\ \\",
+  "   _/  \\_",
+];
+/** Curled sleeper, head on the left. */
+const SLEEP_CURL_B = [
+  "  /\\_/\\",
+  "<( -.- ) __",
+  "   |   \\/  \\",
+  "  / /\\ \\__/",
+  " _/  \\_",
 ];
 
-const sideEyes = (sprite: string[], l: string, r: string): string[] => {
-  const s = [...sprite];
-  const row = [...s[1]];
-  row[13] = l;
-  row[15] = r;
-  s[1] = row.join("");
-  return s;
+/**
+ * Swap the eyes of a front-facing pose. `- -` in row 1 marks the two eye
+ * cells; pass two characters (`o o`) or three (`o.o`) to replace them.
+ */
+const frontEyes = (sprite: readonly string[], eyes: string): string[] => {
+  const out = [...sprite];
+  const face = out[1];
+  const slot = face.indexOf("- -");
+  if (slot < 0) throw new Error("front sprite lost its eye slot");
+  const fill = eyes.length === 3 ? eyes : `${eyes[0]} ${eyes[1]}`;
+  out[1] = face.slice(0, slot) + fill + face.slice(slot + "- -".length);
+  return out;
 };
-const frontEyes = (sprite: string[], eyes: string): string[] => {
-  // ") - - (": three-char eyes occupy cols 2-4; two-char eyes at cols 2 and 4
-  const s = [...sprite];
-  const row = [...s[1]];
-  if (eyes.length === 3) {
-    row[2] = eyes[0];
-    row[3] = eyes[1];
-    row[4] = eyes[2];
-  } else {
-    row[2] = eyes[0];
-    row[4] = eyes[1];
-  }
-  s[1] = row.join("");
-  return s;
+
+/**
+ * Swap the eyes of a side-view pose. `a a` in row 1 marks the two eye cells;
+ * pass two characters (`- -`, `@ @`, `O O`).
+ */
+const sideEyes = (sprite: readonly string[], l: string, r: string): string[] => {
+  const out = [...sprite];
+  const face = out[1];
+  const slot = face.indexOf("a a");
+  if (slot < 0) throw new Error("side sprite lost its eye slot");
+  out[1] = face.slice(0, slot) + `${l} ${r}` + face.slice(slot + "a a".length);
+  return out;
+};
+
+/** Swap the eyes of the arched pose. `'Y'` in row 1 marks the eye cell. */
+const archEyes = (sprite: readonly string[], eyes: string): string[] => {
+  const out = [...sprite];
+  const face = out[1];
+  const slot = face.indexOf("'Y'");
+  if (slot < 0) throw new Error("arch sprite lost its eye slot");
+  out[1] = face.slice(0, slot) + eyes + face.slice(slot + "'Y'".length);
+  return out;
 };
 
 interface FrameOut {
@@ -61,10 +127,20 @@ interface FrameOut {
   lines: string[];
 }
 
+interface ActionOut {
+  loop: boolean;
+  frames: FrameOut[];
+}
+
+/**
+ * Stamp `sprite` at column `x` onto a blank 70x5 stage, then paint any
+ * overlays. Every row of the sprite keeps its own relative indentation; only
+ * the whole sprite moves, so a pose can never shear between rows.
+ */
 const stage = (
-  sprite: string[],
+  sprite: readonly string[],
   x: number,
-  overlays: Array<[number, number, string]> = [],
+  overlays: ReadonlyArray<readonly [number, number, string]> = [],
   tag = "?",
 ): string[] => {
   const grid = Array.from({ length: H }, () => " ".repeat(W).split(""));
@@ -73,7 +149,7 @@ const stage = (
       const ch = str[i];
       if (ch === " ") continue;
       const col = c + i;
-      if (col >= W) throw new Error(`${tag}: overflow row ${r} col ${col}`);
+      if (col < 0 || col >= W) throw new Error(`${tag}: overflow row ${r} col ${col}`);
       grid[r][col] = ch;
     }
   };
@@ -90,6 +166,56 @@ const idle: FrameOut[] = [
   { durationMs: 900, lines: stage(frontEyes(FRONT, "- -"), 0, [], "idle") },
   { durationMs: 700, lines: stage(frontEyes(FRONT, "_ _"), 0, [], "idle") },
 ];
+
+// ---------- think: walk right, stop and ponder, arch back, settle ----------
+const think: FrameOut[] = [];
+{
+  const walkX = [0, 10, 22, 34, 46];
+  walkX.forEach((x, i) => {
+    const sprite = i % 2 === 0 ? SIDE_A : SIDE_B;
+    think.push({ durationMs: 500, lines: stage(sprite, x, [], `think-walk${i}`) });
+  });
+
+  // Pondering: eyes cycle through confusion until one insight frame ("!").
+  const pondering: Array<[string, string?]> = [
+    ["o.o"],
+    ["- -"],
+    ["o O", "?"],
+    ["O o", "??"],
+    ["- -", "??"],
+    ["O O", "?"],
+    ["O.O", "!"],
+    ["^.^"],
+    ["<.<"],
+  ];
+  const frontX = 56;
+  pondering.forEach(([eyes, mark], i) => {
+    const overlays: Array<[number, number, string]> = mark ? [[0, frontX + 10, mark]] : [];
+    think.push({
+      durationMs: i >= 2 && i <= 4 ? 650 : 500,
+      lines: stage(frontEyes(FRONT, eyes), frontX, overlays, `think-front${i}`),
+    });
+  });
+
+  // Arch the back and pace back to the left edge.
+  const archX = [46, 34, 22, 10, 0];
+  archX.forEach((x, i) => {
+    const sprite = archEyes(ARCH, i % 2 === 0 ? "'Y'" : "'-'");
+    think.push({ durationMs: 500, lines: stage(sprite, x, [], `think-arch${i}`) });
+  });
+
+  think.push({ durationMs: 500, lines: stage(frontEyes(FRONT, "^.^"), 0, [], "think-settle") });
+}
+
+// ---------- sleeping: curled cat rocking across the stage ----------
+const sleeping: FrameOut[] = [];
+{
+  const sleepX = [0, 16, 33, 51, 51, 33, 16, 0];
+  sleepX.forEach((x, i) => {
+    const sprite = i < 4 ? SLEEP_CURL : SLEEP_CURL_B;
+    sleeping.push({ durationMs: 1050, lines: stage(sprite, x, [], `sleeping${i}`) });
+  });
+}
 
 // ---------- work: front cat at a terminal desk — fixed composition with ----------
 // ---------- scrolling code, paw taps, and eye cycles (no stage travel) ----------
@@ -216,19 +342,30 @@ const interrupted: FrameOut[] = [];
   interrupted.push(drop(0, "v"), drop(1, "v"), drop(2, "v"), drop(3, "?"));
 }
 
-const actions: Record<string, FrameOut[]> = { idle, work, wait, happy, celebrate, panic, compact, interrupted };
+const actions: Record<string, ActionOut> = {
+  idle: { loop: true, frames: idle },
+  think: { loop: true, frames: think },
+  sleeping: { loop: true, frames: sleeping },
+  work: { loop: true, frames: work },
+  wait: { loop: true, frames: wait },
+  happy: { loop: true, frames: happy },
+  celebrate: { loop: true, frames: celebrate },
+  panic: { loop: true, frames: panic },
+  compact: { loop: true, frames: compact },
+  interrupted: { loop: true, frames: interrupted },
+};
 
 // ---- invariants ----
 const problems: string[] = [];
-for (const [name, frames] of Object.entries(actions)) {
-  frames.forEach((f, fi) => {
+for (const [name, action] of Object.entries(actions)) {
+  action.frames.forEach((f, fi) => {
     if (f.lines.length !== H) problems.push(`${name}[${fi}] height ${f.lines.length}`);
     f.lines.forEach((l, li) => {
       if (l.length !== W) problems.push(`${name}[${fi}] line ${li} width ${l.length}`);
       if (/[^\x20-\x7e]/.test(l)) problems.push(`${name}[${fi}] line ${li} non-ascii`);
     });
   });
-  if (leadingCol(frames[0].lines) !== 0) problems.push(`${name} first frame col ${leadingCol(frames[0].lines)}`);
+  if (leadingCol(action.frames[0].lines) !== 0) problems.push(`${name} first frame col ${leadingCol(action.frames[0].lines)}`);
 }
 const happySpread = Math.max(...happy.map(f => leadingCol(f.lines))) - Math.min(...happy.map(f => leadingCol(f.lines)));
 if (happySpread < 45) problems.push(`happy spread ${happySpread} < 45`);
@@ -238,4 +375,12 @@ if (problems.length) {
 }
 console.error("ALL OK");
 
-console.log(JSON.stringify(actions, null, 2));
+if (process.argv.includes("--write")) {
+  const packPath = join(dirname(fileURLToPath(import.meta.url)), "..", "packs", "cat.json");
+  const pack = JSON.parse(readFileSync(packPath, "utf8")) as PetPack;
+  const next: PetPack = { ...pack, actions: { ...pack.actions, ...actions } };
+  writeFileSync(packPath, JSON.stringify(next, null, 2) + "\n");
+  console.log(`wrote ${packPath}: ${Object.keys(actions).length} generated, ${Object.keys(next.actions).length} total actions`);
+} else {
+  console.log(JSON.stringify(actions, null, 2));
+}

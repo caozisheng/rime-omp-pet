@@ -20,16 +20,34 @@ describe("bundled pet packs", () => {
     expect(validatePetPack(catPack).ok).toBe(true);
     expect(validatePetPack(dogPack).ok).toBe(true);
   });
-  test("restores the meow-derived cat idle artwork on the 70-column stage", () => {
+
+  test("ship every frame at the pack's exact stage size", () => {
+    // validatePetPack() pads and clips, so a frame row that drifted one column
+    // (a miscounted escape while hand-editing JSON) would otherwise load fine.
+    for (const pack of [catPack, dogPack, parrotPack]) {
+      for (const [action, animation] of Object.entries(pack.actions)) {
+        animation.frames.forEach((frame, index) => {
+          const where = `${pack.id}/${action}[${index}]`;
+          expect(frame.lines.length, `${where} rows`).toBe(pack.height);
+          for (const line of frame.lines) {
+            expect(line.length, `${where} columns`).toBe(pack.width);
+          }
+        });
+      }
+    }
+  });
+  test("keeps the meow-derived cat idle artwork spine-aligned on the 70-column stage", () => {
     const animation = catPack.actions.idle;
     const artwork = animation.frames.map(frame => frame.lines.map(line => line.trimEnd()));
 
     expect(animation.loop).toBe(true);
     expect(animation.frames.map(frame => frame.durationMs)).toEqual([900, 700]);
     expect(animation.frames.every(frame => frame.lines.every(line => line.length === 70))).toBe(true);
+    // Crown, face and belly share one spine column; the outstretched paws and
+    // the hind leg overhang it by exactly one column on each side.
     expect(artwork).toEqual([
-      ["/\\___/\\", ") - - (", "=\\ -^- /=", "/     \\", "\\__ __ __))"],
-      ["/\\___/\\", ") _ _ (", "=\\ -^- /=", "/     \\", "\\__ __ __))"],
+      [" /\\___/\\", " ) - - (", "=\\ -^- /=", " /     \\", "\\__ __ __))"],
+      [" /\\___/\\", " ) _ _ (", "=\\ -^- /=", " /     \\", "\\__ __ __))"],
     ]);
   });
 
