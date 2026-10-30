@@ -68,6 +68,19 @@ const ARCH = [
   "  /;_,) |\\\\ \\",
   " (_/ (_/ (_(_/",
 ];
+/**
+ * Same arched cat mid-stride: the front and hind paws reach one column out
+ * from the planted pose, so the gap between the paws widens. Alternating this
+ * with ARCH while the sprite travels left gives the legs a gait instead of a
+ * rigid slide.
+ */
+const ARCH_STRIDE = [
+  " /\\=/\\-\"\"-.//",
+  "= 'Y' =  ,  \\",
+  " '-^-'  /(  /",
+  "  /;_,) |\\\\ \\",
+  "(_/  (_/  (_(_/",
+];
 /** Curled sleeper, head on the right; ears aligned over the 7-wide face. */
 const SLEEP_CURL = [
   "     /\\_/\\",
@@ -197,10 +210,12 @@ const think: FrameOut[] = [];
     });
   });
 
-  // Arch the back and pace back to the left edge.
+  // Arch the back and pace back to the left edge, alternating the stance so
+  // the paws open and close instead of sliding rigidly.
   const archX = [46, 34, 22, 10, 0];
   archX.forEach((x, i) => {
-    const sprite = archEyes(ARCH, i % 2 === 0 ? "'Y'" : "'-'");
+    const stance = i % 2 === 0 ? ARCH : ARCH_STRIDE;
+    const sprite = archEyes(stance, i % 2 === 0 ? "'Y'" : "'-'");
     think.push({ durationMs: 500, lines: stage(sprite, x, [], `think-arch${i}`) });
   });
 
