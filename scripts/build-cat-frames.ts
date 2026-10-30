@@ -60,27 +60,25 @@ const SIDE_B = [
   "  >\\_  /--<",
   "   (_)) \\_))",
 ];
-/** Arched-back cat — meow cat135 rows 2-6, facing right. */
-const ARCH = [
-  " /\\=/\\-\"\"-.//",
+/**
+ * Arched-back cat — meow cat135 rows 2-6, facing left. The cropped tail ends
+ * with a `\\` closing back onto the rump; two open `/` strokes read as a torn
+ * tail tip at this height.
+ */
+const ARCH_BACK = [
+  " /\\=/\\-\"\"-./\\",
   "= 'Y' =  ,  \\",
   " '-^-'  /(  /",
   "  /;_,) |\\\\ \\",
-  " (_/ (_/ (_(_/",
 ];
+const ARCH = [...ARCH_BACK, " (_/ (_/ (_(_/"];
 /**
  * Same arched cat mid-stride: the front and hind paws reach one column out
  * from the planted pose, so the gap between the paws widens. Alternating this
  * with ARCH while the sprite travels left gives the legs a gait instead of a
  * rigid slide.
  */
-const ARCH_STRIDE = [
-  " /\\=/\\-\"\"-.//",
-  "= 'Y' =  ,  \\",
-  " '-^-'  /(  /",
-  "  /;_,) |\\\\ \\",
-  "(_/  (_/  (_(_/",
-];
+const ARCH_STRIDE = [...ARCH_BACK, "(_/  (_/  (_(_/"];
 /** Curled sleeper, head on the right; ears aligned over the 7-wide face. */
 const SLEEP_CURL = [
   "     /\\_/\\",
